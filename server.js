@@ -92,6 +92,28 @@ wss.on("connection", (ws) => {
         }
         break;
 
+      case "updateRoomInfo":
+        const updateRoom = await Room.findOne({
+          code: data.roomCode,
+        });
+
+        if (updateRoom.admin.id !== data.playerId) {
+          ws.send(JSON.stringify({ type: "notAdmin" }));
+          return;
+        }
+
+        const allowedKeys = ["gameMode", "difficulty", "rounds"];
+
+        if (updateRoom) {
+          if (allowedKeys.includes(data.key)) {
+            updateRoom[data.key] = data.value;
+          }
+
+          await updateRoom.save();
+          broadcastRoom(updateRoom, data.playerId);
+        }
+
+        break;
       default:
         ws.send(JSON.stringify({ type: "unknownCommand" }));
         break;
