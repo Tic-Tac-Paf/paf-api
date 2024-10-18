@@ -13,8 +13,8 @@ const RoomSchema = new mongoose.Schema({
     },
   ],
   gameMode: String,
-  difficulty: String,
-  rounds: Number,
+  difficulty: { type: String, default: "easy" },
+  rounds: { type: Number, default: 3 },
 });
 
 const Room = mongoose.model("Room", RoomSchema);
