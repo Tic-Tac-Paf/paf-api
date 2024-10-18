@@ -57,14 +57,26 @@ wss.on("connection", (ws) => {
         if (!joinUser) {
           joinUser = new User({ username: data.username });
           await joinUser.save();
+        } else {
+          joinUser.username = data.username;
+          await joinUser.save();
         }
 
         const room = await Room.findOne({ code: data.roomCode });
         if (room) {
           if (!room.players.find((player) => player.id === joinUser.id)) {
             room.players.push({ id: joinUser.id, username: joinUser.username });
-            await room.save();
+          } else {
+            // replace the username with the new username
+            room.players = room.players.map((player) => {
+              if (player.id === joinUser.id) {
+                player.username = joinUser.username;
+              }
+              return player;
+            });
           }
+
+          await room.save();
 
           ws.send(
             JSON.stringify({
