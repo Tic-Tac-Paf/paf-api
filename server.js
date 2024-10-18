@@ -13,11 +13,13 @@ const wss = new WebSocket.Server({ server });
 dotenv.config();
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_DB, {
-  dbName: "TikTakPaf",
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+mongoose
+  .connect(process.env.MONGO_DB, {
+    dbName: "TikTakPaf",
+  })
+  .then(() => {
+    console.log("Connected to MongoDB");
+  });
 
 const PORT = process.env.PORT || 3000;
 
