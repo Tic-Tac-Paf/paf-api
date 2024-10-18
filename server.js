@@ -61,8 +61,10 @@ wss.on("connection", (ws) => {
 
         const room = await Room.findOne({ code: data.roomCode });
         if (room) {
-          room.players.push({ id: joinUser.id, username: joinUser.username });
-          await room.save();
+          if (!room.players.find((player) => player.id === joinUser.id)) {
+            room.players.push({ id: joinUser.id, username: joinUser.username });
+            await room.save();
+          }
 
           ws.send(
             JSON.stringify({
