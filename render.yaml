@@ -9,4 +9,6 @@ services:
     envVars:
       - key: MONGO_DB
         value: mongodb+srv://admin:CgMsco7vg5kV8i6w@tiktakpaf.2fdkr.mongodb.net/?retryWrites=true&w=majority&appName=TikTakPaf
+      - key: PORT
+        value: 3000
     healthCheckPath: "/health" # Optional health check endpoint

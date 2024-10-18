@@ -19,6 +19,8 @@ mongoose.connect(process.env.MONGO_DB, {
   useUnifiedTopology: true,
 });
 
+const PORT = process.env.PORT || 3000;
+
 wss.on("connection", (ws) => {
   ws.on("message", async (message) => {
     const data = JSON.parse(message);
@@ -147,6 +149,6 @@ function broadcastRoom(room, playerId) {
   });
 }
 
-server.listen(3000, () => {
+server.listen(PORT, () => {
   console.log("Server is listening on port 3000");
 });
