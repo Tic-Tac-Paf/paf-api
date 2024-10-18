@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: tic-tac-paf-backend
+    runtime: node # Specifies the Node.js runtime
+    plan: free
+    buildCommand: "npm install && npm run build"
+    startCommand: "npm start"
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        value: your-mongodb-url
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: "/health" # Optional health check endpoint
