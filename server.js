@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const User = require("./models/User");
 const Room = require("./models/Room");
 const dotenv = require("dotenv");
+const { generateRoomCode } = require("./utils/data");
 
 const app = express();
 const server = http.createServer(app);
@@ -24,14 +25,16 @@ wss.on("connection", (ws) => {
 
     switch (data.type) {
       case "createRoom":
-        let user = await User.findOne({ username: data.admin });
+        let user = await User.findOne({ id: data.playerId });
         if (!user) {
-          user = new User({ username: data.admin });
+          user = new User({ username: data.username });
           await user.save();
         }
 
+        const roomCode = generateRoomCode();
+
         const newRoom = new Room({
-          name: data.roomName,
+          code: roomCode,
           admin: { id: user.id, username: user.username },
           players: [],
         });
@@ -49,15 +52,15 @@ wss.on("connection", (ws) => {
         break;
 
       case "joinRoom":
-        let joinUser = await User.findOne({ username: data.player });
+        let joinUser = await User.findOne({ id: data.playerId });
         if (!joinUser) {
-          joinUser = new User({ username: data.player });
+          joinUser = new User({ username: data.username });
           await joinUser.save();
         }
 
-        const room = await Room.findOne({ name: data.roomName });
+        const room = await Room.findOne({ code: data.roomCode });
         if (room) {
-          room.players.push({ id: joinUser.id, username: data.player });
+          room.players.push({ id: joinUser.id, username: joinUser.username });
           await room.save();
 
           ws.send(
@@ -75,7 +78,7 @@ wss.on("connection", (ws) => {
         break;
 
       case "getRoomInfo":
-        const roomInfo = await Room.findOne({ name: data.roomName });
+        const roomInfo = await Room.findOne({ code: data.roomCode });
         if (roomInfo) {
           ws.send(
             JSON.stringify({
