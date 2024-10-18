@@ -36,6 +36,7 @@ wss.on("connection", (ws) => {
         const newRoom = new Room({
           code: roomCode,
           admin: { id: user.id, username: user.username },
+          gameMode: data.gameMode,
           players: [],
         });
         await newRoom.save();
