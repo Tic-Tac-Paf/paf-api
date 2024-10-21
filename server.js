@@ -4,6 +4,7 @@ const WebSocket = require("ws");
 const mongoose = require("mongoose");
 const User = require("./models/User");
 const Room = require("./models/Room");
+const Questions = require("./models/Questions");
 const dotenv = require("dotenv");
 const { generateRoomCode } = require("./utils/data");
 
@@ -24,6 +25,9 @@ mongoose
 const PORT = process.env.PORT || 3000;
 
 wss.on("connection", (ws) => {
+  let currentUser = null; // Track the current user
+  let currentRoom = null; // Track the current room
+
   ws.on("message", async (message) => {
     const data = JSON.parse(message);
 
@@ -45,6 +49,9 @@ wss.on("connection", (ws) => {
             players: [],
           });
           await newRoom.save();
+
+          currentUser = user; // Store the current user
+          currentRoom = newRoom; // Store the current room
 
           ws.send(
             JSON.stringify({
@@ -90,6 +97,9 @@ wss.on("connection", (ws) => {
             }
 
             await room.save();
+
+            currentUser = joinUser; // Store the current user
+            currentRoom = room; // Store the current room
 
             ws.send(
               JSON.stringify({
@@ -137,7 +147,7 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          const allowedKeys = ["gameMode", "difficulty", "rounds"];
+          const allowedKeys = ["gameMode", "difficulty", "rounds", "questions"];
 
           if (updateRoom) {
             if (allowedKeys.includes(data.key)) {
@@ -152,14 +162,66 @@ wss.on("connection", (ws) => {
         }
 
         break;
+
+      case "getRoomQuestions":
+        try {
+          const room = await Room.findById(data.roomId);
+
+          if (!room) {
+            ws.send(JSON.stringify({ type: "roomNotFound" }));
+            return;
+          }
+
+          if (room.admin.id !== data.playerId) {
+            ws.send(JSON.stringify({ type: "notAdmin" }));
+            return;
+          }
+
+          const questions = await Questions.find({
+            difficulty: data.difficulty,
+          });
+
+          // create me 3 arrays with 3 questions each
+          const questionSets = [];
+
+          for (let i = 0; i < room.rounds; i++) {
+            const set = [];
+            for (let j = 0; j < 3; j++) {
+              const randomIndex = Math.floor(Math.random() * questions.length);
+              set.push(questions[randomIndex]);
+              questions.splice(randomIndex, 1);
+            }
+            questionSets.push(set);
+          }
+
+          ws.send(
+            JSON.stringify({ type: "questions", questions: questionSets })
+          );
+        } catch (error) {
+          ws.send(JSON.stringify({ type: "error", message: error.message }));
+        }
+
+        break;
+
       default:
         ws.send(JSON.stringify({ type: "unknownCommand" }));
         break;
     }
   });
 
-  ws.on("close", () => {
-    console.log("Client disconnected");
+  ws.on("close", async () => {
+    if (currentUser && currentRoom) {
+      // Remove the user from the room's player list
+      currentRoom.players = currentRoom.players.filter(
+        (player) => player.id !== currentUser.id
+      );
+
+      // Save the updated room
+      await currentRoom.save();
+
+      // Notify other users in the room about the updated player list
+      broadcastRoom(currentRoom, currentUser.id);
+    }
   });
 });
 
