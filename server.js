@@ -35,25 +35,30 @@ wss.on("connection", (ws) => {
           await user.save();
         }
 
-        const roomCode = generateRoomCode();
+        try {
+          const roomCode = generateRoomCode();
 
-        const newRoom = new Room({
-          code: roomCode,
-          admin: { id: user.id, username: user.username },
-          gameMode: data.gameMode,
-          players: [],
-        });
-        await newRoom.save();
+          const newRoom = new Room({
+            code: roomCode,
+            admin: { id: user.id, username: user.username },
+            gameMode: data.gameMode,
+            players: [],
+          });
+          await newRoom.save();
 
-        ws.send(
-          JSON.stringify({
-            type: "roomCreated",
-            room: newRoom,
-            playerId: user.id,
-          })
-        );
+          ws.send(
+            JSON.stringify({
+              type: "roomCreated",
+              room: newRoom,
+              playerId: user.id,
+            })
+          );
 
-        broadcastRoom(newRoom, user.id);
+          broadcastRoom(newRoom, user.id);
+        } catch (error) {
+          ws.send(JSON.stringify({ type: "error", message: error.message }));
+        }
+
         break;
 
       case "joinRoom":
@@ -68,67 +73,82 @@ wss.on("connection", (ws) => {
 
         const room = await Room.findOne({ code: data.roomCode });
         if (room) {
-          if (!room.players.find((player) => player.id === joinUser.id)) {
-            room.players.push({ id: joinUser.id, username: joinUser.username });
-          } else {
-            // replace the username with the new username
-            room.players = room.players.map((player) => {
-              if (player.id === joinUser.id) {
-                player.username = joinUser.username;
-              }
-              return player;
-            });
+          try {
+            if (!room.players.find((player) => player.id === joinUser.id)) {
+              room.players.push({
+                id: joinUser.id,
+                username: joinUser.username,
+              });
+            } else {
+              // replace the username with the new username
+              room.players = room.players.map((player) => {
+                if (player.id === joinUser.id) {
+                  player.username = joinUser.username;
+                }
+                return player;
+              });
+            }
+
+            await room.save();
+
+            ws.send(
+              JSON.stringify({
+                type: "roomJoined",
+                room,
+                playerId: joinUser.id,
+              })
+            );
+
+            broadcastRoom(room, joinUser.id);
+          } catch (error) {
+            ws.send(JSON.stringify({ type: "error", message: error.message }));
           }
-
-          await room.save();
-
-          ws.send(
-            JSON.stringify({
-              type: "roomJoined",
-              room,
-              playerId: joinUser.id,
-            })
-          );
-
-          broadcastRoom(room, joinUser.id);
         } else {
           ws.send(JSON.stringify({ type: "roomNotFound" }));
         }
         break;
 
       case "getRoomInfo":
-        const roomInfo = await Room.findOne({ code: data.roomCode });
-        if (roomInfo) {
-          ws.send(
-            JSON.stringify({
-              type: "roomInfo",
-              room: roomInfo,
-            })
-          );
-        } else {
-          ws.send(JSON.stringify({ type: "roomNotFound" }));
+        try {
+          const roomInfo = await Room.findOne({ code: data.roomCode });
+          if (roomInfo) {
+            ws.send(
+              JSON.stringify({
+                type: "roomInfo",
+                room: roomInfo,
+              })
+            );
+          } else {
+            ws.send(JSON.stringify({ type: "roomNotFound" }));
+          }
+        } catch (error) {
+          ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
         break;
 
       case "updateRoomInfo":
-        const updateRoom = await Room.findOne({
-          code: data.roomCode,
-        });
+        try {
+          const updateRoom = await Room.findOne({
+            code: data.roomCode,
+          });
 
-        if (updateRoom.admin.id !== data.playerId) {
-          ws.send(JSON.stringify({ type: "notAdmin" }));
-          return;
-        }
-
-        const allowedKeys = ["gameMode", "difficulty", "rounds"];
-
-        if (updateRoom) {
-          if (allowedKeys.includes(data.key)) {
-            updateRoom[data.key] = data.value;
+          if (updateRoom.admin.id !== data.playerId) {
+            ws.send(JSON.stringify({ type: "notAdmin" }));
+            return;
           }
 
-          await updateRoom.save();
-          broadcastRoom(updateRoom, data.playerId);
+          const allowedKeys = ["gameMode", "difficulty", "rounds"];
+
+          if (updateRoom) {
+            if (allowedKeys.includes(data.key)) {
+              updateRoom[data.key] = data.value;
+            }
+
+            await updateRoom.save();
+            broadcastRoom(updateRoom, data.playerId);
+          }
+        } catch (error) {
+          ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
 
         break;
@@ -150,6 +170,10 @@ function broadcastRoom(room, playerId) {
     }
   });
 }
+
+app.get("/", (req, res) => {
+  res.send("Welcome to TikTakPaf");
+});
 
 server.listen(PORT, () => {
   console.log("Server is listening on port 3000");
