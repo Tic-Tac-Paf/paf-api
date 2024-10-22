@@ -208,6 +208,56 @@ wss.on("connection", (ws) => {
 
         break;
 
+      case "sendWord":
+        const playerWord = data.word;
+
+        try {
+          // const room = await Room.findOne({ code: data.roomCode });
+
+          // if (!room) {
+          //   ws.send(JSON.stringify({ type: "roomNotFound" }));
+          //   return;
+          // }
+
+          // if (room.state !== "in_game") {
+          //   ws.send(JSON.stringify({ type: "notInGame" }));
+          //   return;
+          // }
+
+          // if (room.currentRound === room.rounds) {
+          //   ws.send(JSON.stringify({ type: "gameOver" }));
+          //   return;
+          // }
+
+          const player = await User.findOne({ _id: data.playerId });
+
+          ws.send(
+            JSON.stringify({ type: "receivedWord", word: playerWord, player })
+          );
+        } catch (error) {
+          ws.send(JSON.stringify({ type: "error", message: error.message }));
+        }
+        break;
+
+      case "validateWord":
+        const word = data.word;
+        const isWordValidated = data.validated;
+        const playerId = data.playerId;
+
+        try {
+          if (isWordValidated) {
+            ws.send(JSON.stringify({ type: "wordValidated", word, playerId }));
+          } else {
+            ws.send(
+              JSON.stringify({ type: "wordNotValidated", word, playerId })
+            );
+          }
+        } catch (error) {
+          ws.send(JSON.stringify({ type: "error", message: error.message }));
+        }
+
+        break;
+
       default:
         ws.send(JSON.stringify({ type: "unknownCommand" }));
         break;
