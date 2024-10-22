@@ -212,27 +212,99 @@ wss.on("connection", (ws) => {
         const playerWord = data.word;
 
         try {
-          // const room = await Room.findOne({ code: data.roomCode });
+          const room = await Room.findOne({ code: data.roomCode });
 
-          // if (!room) {
-          //   ws.send(JSON.stringify({ type: "roomNotFound" }));
-          //   return;
-          // }
+          if (!room) {
+            ws.send(JSON.stringify({ type: "roomNotFound" }));
+            return;
+          }
 
           // if (room.state !== "in_game") {
           //   ws.send(JSON.stringify({ type: "notInGame" }));
           //   return;
           // }
 
-          // if (room.currentRound === room.rounds) {
-          //   ws.send(JSON.stringify({ type: "gameOver" }));
-          //   return;
-          // }
+          if (room.currentRound === room.rounds) {
+            ws.send(JSON.stringify({ type: "gameOver" }));
+            return;
+          }
 
           const player = await User.findOne({ id: data.playerId });
 
+          if (!player) {
+            ws.send(JSON.stringify({ type: "playerNotFound" }));
+            return;
+          }
+
+          let currentRound = room.currentRound || 1;
+
+          if (!room.words) {
+            room.words = {};
+          }
+
+          // if (!room.words[currentRound]) {
+          //   room.words[currentRound] = [
+          //     {
+          //       playerId: player.id,
+          //       word: playerWord,
+          //     },
+          //   ];
+          // }
+
+          if (
+            room.words[currentRound].find((word) => word.playerId === player.id)
+          ) {
+            ws.send(JSON.stringify({ type: "wordAlreadySent" }));
+            return;
+          }
+
+          room.words[currentRound].push({
+            playerId: player.id,
+            word: playerWord,
+          });
+
+          await room.save();
+        } catch (error) {
+          ws.send(JSON.stringify({ type: "error", message: error.message }));
+        }
+        break;
+
+      case "getRoundResults":
+        try {
+          const room = await room.findOne({ code: data.code });
+
+          if (!room) {
+            ws.send(JSON.stringify({ type: "roomNotFound" }));
+            return;
+          }
+
+          if (room.admin.id !== data.playerId) {
+            ws.send(JSON.stringify({ type: "notAdmin" }));
+            return;
+          }
+
+          const currentRound = room.currentRound || 1;
+
+          if (!room.words[currentRound]) {
+            ws.send(JSON.stringify({ type: "noWords" }));
+            return;
+          }
+
+          const words = room.words[currentRound];
+
+          const results = words.map((word) => {
+            return {
+              playerId: word.playerId,
+              word: word.word,
+              validated: true,
+            };
+          });
+
           ws.send(
-            JSON.stringify({ type: "receivedWord", word: playerWord, player })
+            JSON.stringify({
+              type: "roundResults",
+              results,
+            })
           );
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
