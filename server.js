@@ -239,29 +239,18 @@ wss.on("connection", (ws) => {
           let currentRound = room.currentRound || 1;
 
           if (!room.words[currentRound]) {
-            room.words[currentRound] = [];
+            room.words[currentRound] = [
+              {
+                playerId: player.id,
+                word: playerWord,
+              },
+            ];
+          } else {
+            room.words[currentRound].push({
+              playerId: player.id,
+              word: playerWord,
+            });
           }
-
-          // if (!room.words[currentRound]) {
-          //   room.words[currentRound] = [
-          //     {
-          //       playerId: player.id,
-          //       word: playerWord,
-          //     },
-          //   ];
-          // }
-
-          // if (
-          //   room.words[currentRound].find((word) => word.playerId === player.id)
-          // ) {
-          //   ws.send(JSON.stringify({ type: "wordAlreadySent" }));
-          //   return;
-          // }
-
-          room.words[currentRound].push({
-            playerId: player.id,
-            word: playerWord,
-          });
 
           await room.save();
         } catch (error) {
