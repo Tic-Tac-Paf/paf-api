@@ -256,7 +256,7 @@ wss.on("connection", (ws) => {
 
       case "getRoundResults":
         try {
-          const room = await room.findOne({ code: data.code });
+          const room = await Room.findOne({ code: data.code });
 
           if (!room) {
             ws.send(JSON.stringify({ type: "roomNotFound" }));
@@ -270,20 +270,20 @@ wss.on("connection", (ws) => {
 
           const currentRound = room.currentRound || 1;
 
-          if (!room.words[currentRound]) {
+          if (!room.words[`round_${currentRound}`]) {
             ws.send(JSON.stringify({ type: "noWords" }));
             return;
           }
 
-          const words = room.words[currentRound];
+          const words = room.words[`round_${currentRound}`];
 
-          const results = words.map((word) => {
-            return {
-              playerId: word.playerId,
-              word: word.word,
-              validated: true,
-            };
-          });
+          const results = [];
+
+          for (const [playerId, word] of Object.entries(words)) {
+            const result = { playerId, word };
+
+            results.push(result);
+          }
 
           ws.send(
             JSON.stringify({
@@ -292,6 +292,8 @@ wss.on("connection", (ws) => {
             })
           );
         } catch (error) {
+          console.log(error);
+
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
         break;
