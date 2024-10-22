@@ -15,7 +15,7 @@ const RoomSchema = new mongoose.Schema({
   gameMode: String,
   difficulty: { type: String, default: "easy" },
   rounds: { type: Number, default: 3 },
-  words: {},
+  words: { type: Object, default: {} }, // Declare words as an empty object
   currentRound: { type: Number, default: 1 },
 });
 
