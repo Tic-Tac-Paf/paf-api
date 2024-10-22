@@ -36,25 +36,30 @@ wss.on("connection", (ws) => {
           await user.save();
         }
 
-        const roomCode = generateRoomCode();
-        const newRoom = new Room({
-          code: roomCode,
-          admin: { id: user.id, username: user.username },
-          gameMode: data.gameMode,
-          players: [],
-        });
+        try {
+          const roomCode = generateRoomCode();
 
-        await newRoom.save();
+          const newRoom = new Room({
+            code: roomCode,
+            admin: { id: user.id, username: user.username },
+            gameMode: data.gameMode,
+            players: [],
+          });
+          await newRoom.save();
 
-        ws.send(
-          JSON.stringify({
-            type: "roomCreated",
-            room: newRoom,
-            playerId: user.id,
-          })
-        );
+          ws.send(
+            JSON.stringify({
+              type: "roomCreated",
+              room: newRoom,
+              playerId: user.id,
+            })
+          );
 
-        broadcastRoom(newRoom, user.id);
+          broadcastRoom(newRoom, user.id);
+        } catch (error) {
+          ws.send(JSON.stringify({ type: "error", message: error.message }));
+        }
+
         break;
 
       case "joinRoom":
@@ -62,29 +67,43 @@ wss.on("connection", (ws) => {
         if (!joinUser) {
           joinUser = new User({ username: data.username });
           await joinUser.save();
+        } else {
+          joinUser.username = data.username;
+          await joinUser.save();
         }
 
         const room = await Room.findOne({ code: data.roomCode });
-
         if (room) {
-          if (!room.players.find((player) => player.id === joinUser.id)) {
-            room.players.push({
-              id: joinUser.id,
-              username: joinUser.username,
-            });
+          try {
+            if (!room.players.find((player) => player.id === joinUser.id)) {
+              room.players.push({
+                id: joinUser.id,
+                username: joinUser.username,
+              });
+            } else {
+              // replace the username with the new username
+              room.players = room.players.map((player) => {
+                if (player.id === joinUser.id) {
+                  player.username = joinUser.username;
+                }
+                return player;
+              });
+            }
+
+            await room.save();
+
+            ws.send(
+              JSON.stringify({
+                type: "roomJoined",
+                room,
+                playerId: joinUser.id,
+              })
+            );
+
+            broadcastRoom(room, joinUser.id);
+          } catch (error) {
+            ws.send(JSON.stringify({ type: "error", message: error.message }));
           }
-
-          await room.save();
-
-          ws.send(
-            JSON.stringify({
-              type: "roomJoined",
-              room,
-              playerId: joinUser.id,
-            })
-          );
-
-          broadcastRoom(room, joinUser.id);
         } else {
           ws.send(JSON.stringify({ type: "roomNotFound" }));
         }
