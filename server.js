@@ -244,6 +244,7 @@ wss.on("connection", (ws) => {
 
           room.words = {
             [`round_${currentRound}`]: {
+              ...room.words[`round_${currentRound}`],
               [`${data.playerId}`]: playerWord,
             },
           };
@@ -281,16 +282,12 @@ wss.on("connection", (ws) => {
 
           for (const [playerId, word] of Object.entries(words)) {
             const result = { playerId, word };
+            const user = await User.findOne({ id: playerId });
 
-            results.push(result);
+            results.push({ ...result, username: user.username });
           }
 
-          ws.send(
-            JSON.stringify({
-              type: "roundResults",
-              results,
-            })
-          );
+          ws.send(JSON.stringify({ type: "roundResults", results }));
         } catch (error) {
           console.log(error);
 
