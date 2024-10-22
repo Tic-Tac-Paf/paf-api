@@ -238,19 +238,15 @@ wss.on("connection", (ws) => {
 
           let currentRound = room.currentRound || 1;
 
-          if (!room.words[currentRound]) {
-            room.words[currentRound] = [
-              {
-                playerId: player.id,
-                word: playerWord,
-              },
-            ];
-          } else {
-            room.words[currentRound].push({
-              playerId: player.id,
-              word: playerWord,
-            });
+          if (!room.words[`round_${currentRound}`]) {
+            room.words[`round_${currentRound}`] = {};
           }
+
+          room.words = {
+            [`round_${currentRound}`]: {
+              [`${data.playerId}`]: playerWord,
+            },
+          };
 
           await room.save();
         } catch (error) {
