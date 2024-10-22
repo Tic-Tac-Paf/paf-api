@@ -229,7 +229,7 @@ wss.on("connection", (ws) => {
           //   return;
           // }
 
-          const player = await User.findOne({ _id: data.playerId });
+          const player = await User.findOne({ id: data.playerId });
 
           ws.send(
             JSON.stringify({ type: "receivedWord", word: playerWord, player })
