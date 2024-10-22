@@ -296,18 +296,30 @@ wss.on("connection", (ws) => {
         break;
 
       case "validateWord":
-        const word = data.word;
         const isWordValidated = data.validated;
+        const adminId = data.adminId;
         const playerId = data.playerId;
+        const roomCode = data.roomId;
 
         try {
-          if (isWordValidated) {
-            ws.send(JSON.stringify({ type: "wordValidated", word, playerId }));
-          } else {
-            ws.send(
-              JSON.stringify({ type: "wordNotValidated", word, playerId })
-            );
+          const room = await Room.findOne({ code: roomCode });
+
+          if (!room) {
+            ws.send(JSON.stringify({ type: "roomNotFound" }));
+            return;
           }
+
+          if (room.admin.id !== adminId) {
+            ws.send(JSON.stringify({ type: "notAdmin" }));
+            return;
+          }
+
+          room.words[`round_${room.currentRound}`][playerId] = {
+            ...room.words[`round_${room.currentRound}`][playerId],
+            validated: isWordValidated,
+          };
+
+          await room.save();
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
