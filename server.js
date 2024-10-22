@@ -238,8 +238,8 @@ wss.on("connection", (ws) => {
 
           let currentRound = room.currentRound || 1;
 
-          if (!room.words) {
-            room.words = {};
+          if (!room.words[currentRound]) {
+            room.words[currentRound] = [];
           }
 
           // if (!room.words[currentRound]) {
