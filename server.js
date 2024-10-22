@@ -24,12 +24,7 @@ mongoose
 
 const PORT = process.env.PORT || 3000;
 
-const disconnectedUsers = new Map(); // Store disconnected users and their timeouts
-
 wss.on("connection", (ws) => {
-  let currentUser = null; // Track the current user
-  let currentRoom = null; // Track the current room
-
   ws.on("message", async (message) => {
     const data = JSON.parse(message);
 
@@ -50,9 +45,6 @@ wss.on("connection", (ws) => {
         });
 
         await newRoom.save();
-
-        currentUser = user;
-        currentRoom = newRoom;
 
         ws.send(
           JSON.stringify({
@@ -84,9 +76,6 @@ wss.on("connection", (ws) => {
 
           await room.save();
 
-          currentUser = joinUser;
-          currentRoom = room;
-
           ws.send(
             JSON.stringify({
               type: "roomJoined",
@@ -96,12 +85,6 @@ wss.on("connection", (ws) => {
           );
 
           broadcastRoom(room, joinUser.id);
-
-          // Cancel the user removal if they reconnect
-          if (disconnectedUsers.has(joinUser.id)) {
-            clearTimeout(disconnectedUsers.get(joinUser.id).timeout);
-            disconnectedUsers.delete(joinUser.id);
-          }
         } else {
           ws.send(JSON.stringify({ type: "roomNotFound" }));
         }
@@ -213,20 +196,7 @@ wss.on("connection", (ws) => {
   });
 
   ws.on("close", () => {
-    // if (currentUser && currentRoom) {
-    //   const timeout = setTimeout(async () => {
-    //     // Remove the user from the room's player list after the timeout
-    //     currentRoom.players = currentRoom.players.filter(
-    //       (player) => player.id !== currentUser.id
-    //     );
-    //     await currentRoom.save();
-    //     // Notify other users in the room about the updated player list
-    //     broadcastRoom(currentRoom, currentUser.id);
-    //     disconnectedUsers.delete(currentUser.id); // Clean up after removal
-    //   }, 30000); // 30 seconds
-    //   // Store the timeout for this user
-    //   disconnectedUsers.set(currentUser.id, { timeout });
-    // }
+    console.log("Client disconnected");
   });
 });
 
