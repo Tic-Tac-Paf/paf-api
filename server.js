@@ -251,12 +251,12 @@ wss.on("connection", (ws) => {
           //   ];
           // }
 
-          if (
-            room.words[currentRound].find((word) => word.playerId === player.id)
-          ) {
-            ws.send(JSON.stringify({ type: "wordAlreadySent" }));
-            return;
-          }
+          // if (
+          //   room.words[currentRound].find((word) => word.playerId === player.id)
+          // ) {
+          //   ws.send(JSON.stringify({ type: "wordAlreadySent" }));
+          //   return;
+          // }
 
           room.words[currentRound].push({
             playerId: player.id,
