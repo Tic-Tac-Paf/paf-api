@@ -24,6 +24,8 @@ mongoose
 
 const PORT = process.env.PORT || 3000;
 
+const disconnectedUsers = new Map(); // Store disconnected users and their timeouts
+
 wss.on("connection", (ws) => {
   let currentUser = null; // Track the current user
   let currentRoom = null; // Track the current room
@@ -39,33 +41,28 @@ wss.on("connection", (ws) => {
           await user.save();
         }
 
-        try {
-          const roomCode = generateRoomCode();
+        const roomCode = generateRoomCode();
+        const newRoom = new Room({
+          code: roomCode,
+          admin: { id: user.id, username: user.username },
+          gameMode: data.gameMode,
+          players: [],
+        });
 
-          const newRoom = new Room({
-            code: roomCode,
-            admin: { id: user.id, username: user.username },
-            gameMode: data.gameMode,
-            players: [],
-          });
-          await newRoom.save();
+        await newRoom.save();
 
-          currentUser = user; // Store the current user
-          currentRoom = newRoom; // Store the current room
+        currentUser = user;
+        currentRoom = newRoom;
 
-          ws.send(
-            JSON.stringify({
-              type: "roomCreated",
-              room: newRoom,
-              playerId: user.id,
-            })
-          );
+        ws.send(
+          JSON.stringify({
+            type: "roomCreated",
+            room: newRoom,
+            playerId: user.id,
+          })
+        );
 
-          broadcastRoom(newRoom, user.id);
-        } catch (error) {
-          ws.send(JSON.stringify({ type: "error", message: error.message }));
-        }
-
+        broadcastRoom(newRoom, user.id);
         break;
 
       case "joinRoom":
@@ -73,45 +70,37 @@ wss.on("connection", (ws) => {
         if (!joinUser) {
           joinUser = new User({ username: data.username });
           await joinUser.save();
-        } else {
-          joinUser.username = data.username;
-          await joinUser.save();
         }
 
         const room = await Room.findOne({ code: data.roomCode });
+
         if (room) {
-          try {
-            if (!room.players.find((player) => player.id === joinUser.id)) {
-              room.players.push({
-                id: joinUser.id,
-                username: joinUser.username,
-              });
-            } else {
-              // replace the username with the new username
-              room.players = room.players.map((player) => {
-                if (player.id === joinUser.id) {
-                  player.username = joinUser.username;
-                }
-                return player;
-              });
-            }
+          if (!room.players.find((player) => player.id === joinUser.id)) {
+            room.players.push({
+              id: joinUser.id,
+              username: joinUser.username,
+            });
+          }
 
-            await room.save();
+          await room.save();
 
-            currentUser = joinUser; // Store the current user
-            currentRoom = room; // Store the current room
+          currentUser = joinUser;
+          currentRoom = room;
 
-            ws.send(
-              JSON.stringify({
-                type: "roomJoined",
-                room,
-                playerId: joinUser.id,
-              })
-            );
+          ws.send(
+            JSON.stringify({
+              type: "roomJoined",
+              room,
+              playerId: joinUser.id,
+            })
+          );
 
-            broadcastRoom(room, joinUser.id);
-          } catch (error) {
-            ws.send(JSON.stringify({ type: "error", message: error.message }));
+          broadcastRoom(room, joinUser.id);
+
+          // Cancel the user removal if they reconnect
+          if (disconnectedUsers.has(joinUser.id)) {
+            clearTimeout(disconnectedUsers.get(joinUser.id).timeout);
+            disconnectedUsers.delete(joinUser.id);
           }
         } else {
           ws.send(JSON.stringify({ type: "roomNotFound" }));
@@ -165,7 +154,7 @@ wss.on("connection", (ws) => {
 
       case "getRoomQuestions":
         try {
-          const room = await Room.findById(data.roomId);
+          const room = await Room.findOne({ code: data.roomCode });
 
           if (!room) {
             ws.send(JSON.stringify({ type: "roomNotFound" }));
@@ -177,25 +166,39 @@ wss.on("connection", (ws) => {
             return;
           }
 
+          // Fetch questions with the specified difficulty
           const questions = await Questions.find({
-            difficulty: data.difficulty,
+            difficulty: room.difficulty,
           });
 
-          // create me 3 arrays with 3 questions each
+          // create 3 arrays with 3 questions each
           const questionSets = [];
 
           for (let i = 0; i < room.rounds; i++) {
             const set = [];
             for (let j = 0; j < 3; j++) {
               const randomIndex = Math.floor(Math.random() * questions.length);
-              set.push(questions[randomIndex]);
+
+              // Extract only the fields we need
+              const question = {
+                _id: questions[randomIndex]._id,
+                question: questions[randomIndex].question,
+              };
+
+              set.push(question);
+
+              // Remove the selected question to avoid duplicates
               questions.splice(randomIndex, 1);
             }
             questionSets.push(set);
           }
 
           ws.send(
-            JSON.stringify({ type: "questions", questions: questionSets })
+            JSON.stringify({
+              type: "questions",
+              questions: questionSets,
+              roomCode: room.code,
+            })
           );
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
@@ -209,19 +212,21 @@ wss.on("connection", (ws) => {
     }
   });
 
-  ws.on("close", async () => {
-    if (currentUser && currentRoom) {
-      // Remove the user from the room's player list
-      currentRoom.players = currentRoom.players.filter(
-        (player) => player.id !== currentUser.id
-      );
-
-      // Save the updated room
-      await currentRoom.save();
-
-      // Notify other users in the room about the updated player list
-      broadcastRoom(currentRoom, currentUser.id);
-    }
+  ws.on("close", () => {
+    // if (currentUser && currentRoom) {
+    //   const timeout = setTimeout(async () => {
+    //     // Remove the user from the room's player list after the timeout
+    //     currentRoom.players = currentRoom.players.filter(
+    //       (player) => player.id !== currentUser.id
+    //     );
+    //     await currentRoom.save();
+    //     // Notify other users in the room about the updated player list
+    //     broadcastRoom(currentRoom, currentUser.id);
+    //     disconnectedUsers.delete(currentUser.id); // Clean up after removal
+    //   }, 30000); // 30 seconds
+    //   // Store the timeout for this user
+    //   disconnectedUsers.set(currentUser.id, { timeout });
+    // }
   });
 });
 
