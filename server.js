@@ -142,7 +142,16 @@ wss.on("connection", (ws) => {
 
           if (updateRoom) {
             if (allowedKeys.includes(data.key)) {
-              updateRoom[data.key] = data.value;
+              if (key === "questions") {
+                // data value must be an array of ObjectIds
+                const questions = data.value.map((questionId) => {
+                  return mongoose.Types.ObjectId(questionId);
+                });
+
+                updateRoom[data.key] = questions;
+              } else {
+                updateRoom[data.key] = data.value;
+              }
             }
 
             await updateRoom.save();
