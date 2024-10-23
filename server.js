@@ -154,7 +154,7 @@ wss.on("connection", (ws) => {
 
         break;
 
-      case "getRoomQuestions":
+      case "getQuestionsForRoom":
         try {
           const room = await Room.findOne({ code: data.roomCode });
 
@@ -224,10 +224,10 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          // if (room.state !== "in_game") {
-          //   ws.send(JSON.stringify({ type: "notInGame" }));
-          //   return;
-          // }
+          if (room.gameState !== "in_game") {
+            ws.send(JSON.stringify({ type: "notInGame" }));
+            return;
+          }
 
           if (room.currentRound === room.rounds) {
             ws.send(JSON.stringify({ type: "gameOver" }));
@@ -306,6 +306,63 @@ wss.on("connection", (ws) => {
         }
         break;
 
+      case "startGame":
+        try {
+          const room = await Room.findOne({
+            code: data.roomCode,
+          });
+
+          if (room.admin.id !== data.playerId) {
+            ws.send(JSON.stringify({ type: "notAdmin" }));
+            return;
+          }
+
+          if (room.gameState !== "lobby") {
+            ws.send(JSON.stringify({ type: "gameAlreadyStarted" }));
+            return;
+          }
+
+          room.gameState = "in_game";
+          await room.save();
+
+          broadcast(room, { type: "gameStarted" });
+        } catch (err) {
+          ws.send(JSON.stringify({ type: "error", message: err.message }));
+        }
+        break;
+
+      case "nextRound":
+        try {
+          const room = await Room.findOne({
+            code: data.roomCode,
+          });
+
+          if (room.admin.id !== data.playerId) {
+            ws.send(JSON.stringify({ type: "notAdmin" }));
+            return;
+          }
+
+          if (room.currentRound === room.rounds) {
+            room.gameState = "game_over";
+            broadcast(room, { type: "gameOver" });
+            ws.send(JSON.stringify({ type: "gameOver" }));
+            return;
+          }
+
+          if (room.gameMode !== "in-game") {
+            ws.send(JSON.stringify({ type: "gameNotStarted" }));
+            return;
+          }
+
+          room.currentRound += 1;
+          await room.save();
+
+          broadcast(room, { type: "roundStarted" });
+        } catch (err) {
+          ws.send(JSON.stringify({ type: "error", message: err.message }));
+        }
+        break;
+
       case "validateWord":
         const isWordValidated = data.validated;
         const adminId = data.adminId;
@@ -370,10 +427,12 @@ function broadcastRoom(room, playerId) {
   });
 }
 
-function broadcast(room) {
+function broadcast(room, data = {}) {
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({ type: "broadcast", room }));
+      client.send(
+        JSON.stringify({ type: "broadcast", room, additionalData: data })
+      );
     }
   });
 }

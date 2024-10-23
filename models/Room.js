@@ -17,6 +17,7 @@ const RoomSchema = new mongoose.Schema({
   rounds: { type: Number, default: 3 },
   words: { type: Object, default: {} }, // Declare words as an empty object
   currentRound: { type: Number, default: 1 },
+  gameState: { type: String, default: "lobby" },
 });
 
 const Room = mongoose.model("Room", RoomSchema);
