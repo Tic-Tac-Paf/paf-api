@@ -133,7 +133,7 @@ wss.on("connection", (ws) => {
             code: data.roomCode,
           });
 
-          if (updateRoom.admin.id !== data.playerId) {
+          if (updateRoom.admin.id !== data.adminId) {
             ws.send(JSON.stringify({ type: "notAdmin" }));
             return;
           }
@@ -163,7 +163,7 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          if (room.admin.id !== data.playerId) {
+          if (room.admin.id !== data.adminId) {
             ws.send(JSON.stringify({ type: "notAdmin" }));
             return;
           }
@@ -275,7 +275,7 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          if (room.admin.id !== data.playerId) {
+          if (room.admin.id !== data.adminId) {
             ws.send(JSON.stringify({ type: "notAdmin" }));
             return;
           }
@@ -312,7 +312,7 @@ wss.on("connection", (ws) => {
             code: data.roomCode,
           });
 
-          if (room.admin.id !== data.playerId) {
+          if (room.admin.id !== data.adminId) {
             ws.send(JSON.stringify({ type: "notAdmin" }));
             return;
           }
@@ -337,7 +337,7 @@ wss.on("connection", (ws) => {
             code: data.roomCode,
           });
 
-          if (room.admin.id !== data.playerId) {
+          if (room.admin.id !== data.adminId) {
             ws.send(JSON.stringify({ type: "notAdmin" }));
             return;
           }
@@ -364,10 +364,12 @@ wss.on("connection", (ws) => {
         break;
 
       case "validateWord":
-        const isWordValidated = data.validated;
-        const adminId = data.adminId;
-        const playerId = data.playerId;
-        const roomCode = data.roomId;
+        const {
+          validated: isWordValidated,
+          adminId,
+          playerId,
+          roomCode,
+        } = data;
 
         try {
           const room = await Room.findOne({ code: roomCode });
