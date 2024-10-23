@@ -322,6 +322,8 @@ wss.on("connection", (ws) => {
           };
 
           await room.save();
+
+          ws.send(JSON.stringify({ type: "wordValidated" }));
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
