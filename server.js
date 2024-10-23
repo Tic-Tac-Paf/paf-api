@@ -328,10 +328,10 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          room.words[`round_${currentRound}`][playerId].validated =
-            isWordValidated;
-
-          await room.save();
+          await room.updateOne({
+            [`words.round_${currentRound}.${playerId}.validated`]:
+              isWordValidated,
+          });
 
           ws.send(JSON.stringify({ type: "wordValidated" }));
         } catch (error) {
