@@ -325,7 +325,11 @@ wss.on("connection", (ws) => {
           room.gameState = "in_game";
           await room.save();
 
-          broadcast(room, { type: "gameStarted" });
+          const question = await Questions.findOne({
+            _id: room.questions[0],
+          });
+
+          broadcast(room, { type: "gameStarted", question });
         } catch (err) {
           ws.send(JSON.stringify({ type: "error", message: err.message }));
         }
@@ -354,10 +358,14 @@ wss.on("connection", (ws) => {
             return;
           }
 
+          const question = await Questions.findOne({
+            _id: room.questions[room.currentRound],
+          });
+
           room.currentRound += 1;
           await room.save();
 
-          broadcast(room, { type: "roundStarted" });
+          broadcast(room, { type: "nextRound", question });
         } catch (err) {
           ws.send(JSON.stringify({ type: "error", message: err.message }));
         }
