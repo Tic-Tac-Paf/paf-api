@@ -189,10 +189,7 @@ wss.on("connection", (ws) => {
               };
 
               if (room.gameMode === "findWord") {
-                question = {
-                  ...question,
-                  answer: questions[randomIndex].answer,
-                };
+                question.answer = questions[randomIndex].answer;
               }
 
               set.push(question);
