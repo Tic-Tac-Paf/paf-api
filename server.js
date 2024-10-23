@@ -252,6 +252,14 @@ wss.on("connection", (ws) => {
           };
 
           await room.save();
+
+          ws.send(JSON.stringify({ type: "wordSent" }));
+
+          broadcast(room.code, {
+            type: "wordSent",
+            playerId: data.playerId,
+            word: playerWord,
+          });
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
@@ -334,6 +342,12 @@ wss.on("connection", (ws) => {
           });
 
           ws.send(JSON.stringify({ type: "wordValidated" }));
+
+          broadcast(roomCode, {
+            type: "wordValidated",
+            playerId,
+            validated: isWordValidated,
+          });
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
@@ -355,6 +369,14 @@ function broadcastRoom(room, playerId) {
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify({ type: "updatedRoom", room, playerId }));
+    }
+  });
+}
+
+function broadcast(room, data) {
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({ type: "broadcast", room, data }));
     }
   });
 }
