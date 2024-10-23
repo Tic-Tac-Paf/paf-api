@@ -171,6 +171,7 @@ wss.on("connection", (ws) => {
           // Fetch questions with the specified difficulty
           const questions = await Questions.find({
             difficulty: room.difficulty,
+            gameMode: room.gameMode,
           });
 
           // create 3 arrays with 3 questions each
@@ -255,11 +256,7 @@ wss.on("connection", (ws) => {
 
           ws.send(JSON.stringify({ type: "wordSent" }));
 
-          broadcast(room.code, {
-            type: "wordSent",
-            playerId: data.playerId,
-            word: playerWord,
-          });
+          broadcast(room);
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
@@ -343,11 +340,7 @@ wss.on("connection", (ws) => {
 
           ws.send(JSON.stringify({ type: "wordValidated" }));
 
-          broadcast(roomCode, {
-            type: "wordValidated",
-            playerId,
-            validated: isWordValidated,
-          });
+          broadcast(room);
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
@@ -373,10 +366,10 @@ function broadcastRoom(room, playerId) {
   });
 }
 
-function broadcast(room, data) {
+function broadcast(room) {
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({ type: "broadcast", room, data }));
+      client.send(JSON.stringify({ type: "broadcast", room }));
     }
   });
 }
