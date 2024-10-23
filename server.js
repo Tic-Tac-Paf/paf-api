@@ -245,7 +245,9 @@ wss.on("connection", (ws) => {
           room.words = {
             [`round_${currentRound}`]: {
               ...room.words[`round_${currentRound}`],
-              [`${data.playerId}`]: playerWord,
+              [`${data.playerId}`]: {
+                word: playerWord,
+              },
             },
           };
 
