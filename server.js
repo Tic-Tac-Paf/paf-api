@@ -183,10 +183,17 @@ wss.on("connection", (ws) => {
               const randomIndex = Math.floor(Math.random() * questions.length);
 
               // Extract only the fields we need
-              const question = {
+              let question = {
                 _id: questions[randomIndex]._id,
                 question: questions[randomIndex].question,
               };
+
+              if (room.gameMode === "findWord") {
+                question = {
+                  ...question,
+                  answer: questions[randomIndex].answer,
+                };
+              }
 
               set.push(question);
 
