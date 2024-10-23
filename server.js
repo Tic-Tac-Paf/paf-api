@@ -316,10 +316,20 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          room.words[`round_${room.currentRound}`][playerId] = {
-            ...room.words[`round_${room.currentRound}`][playerId],
-            validated: isWordValidated,
-          };
+          const currentRound = room.currentRound || 1;
+
+          if (!room.words[`round_${currentRound}`]) {
+            ws.send(JSON.stringify({ type: "noWords" }));
+            return;
+          }
+
+          if (!room.words[`round_${currentRound}`][playerId]) {
+            ws.send(JSON.stringify({ type: "noWord" }));
+            return;
+          }
+
+          room.words[`round_${currentRound}`][playerId].validated =
+            isWordValidated;
 
           await room.save();
 
