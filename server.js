@@ -89,7 +89,7 @@ wss.on("connection", (ws) => {
             await room.save();
 
             broadcast({
-              ...room,
+              room,
               data: { playerId: joinUser.id },
               type: "roomJoined",
             });
