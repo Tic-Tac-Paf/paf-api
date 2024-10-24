@@ -340,10 +340,13 @@ wss.on("connection", (ws) => {
             _id: room.questions[0],
           });
 
-          broadcast({
-            room,
-            type: "gameStarted",
-            data: { question },
+          broadcast({ room, type: "gameStarted" });
+          broadcastData("roomQuestion", {
+            question: {
+              _id: question._id,
+              question: question.question,
+            },
+            roomCode: room.code,
           });
         } catch (err) {
           ws.send(JSON.stringify({ type: "error", message: err.message }));
@@ -380,7 +383,14 @@ wss.on("connection", (ws) => {
           room.currentRound += 1;
           await room.save();
 
-          broadcast({ room, type: "nextRound", data: { question } });
+          broadcast({ room, type: "nextRound" });
+          broadcastData("roomQuestion", {
+            question: {
+              _id: question._id,
+              question: question.question,
+            },
+            roomCode: room.code,
+          });
         } catch (err) {
           ws.send(JSON.stringify({ type: "error", message: err.message }));
         }
@@ -444,10 +454,10 @@ wss.on("connection", (ws) => {
   });
 });
 
-function broadcastRoom(room, playerId) {
+function broadcastData(type, data) {
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({ type: "updatedRoom", room, playerId }));
+      client.send(JSON.stringify({ type, data }));
     }
   });
 }
