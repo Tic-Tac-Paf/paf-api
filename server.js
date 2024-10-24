@@ -309,7 +309,11 @@ wss.on("connection", (ws) => {
             results.push({ ...result, username: user.username });
           }
 
-          ws.send(JSON.stringify({ type: "roundResults", results }));
+          const question = await Questions.findOne({
+            _id: room.questions[currentRound - 1],
+          });
+
+          ws.send(JSON.stringify({ type: "roundResults", results, question }));
         } catch (error) {
           console.log(error);
 
