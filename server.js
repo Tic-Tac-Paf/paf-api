@@ -155,7 +155,14 @@ wss.on("connection", (ws) => {
             }
 
             await updateRoom.save();
-            broadcastRoom(updateRoom, data.playerId);
+
+            const question = await Promise.all(
+              updateRoom.questions.map((questionId) => {
+                return Questions.findOne({ _id: questionId });
+              })
+            );
+
+            broadcast(...updateRoom, question);
           }
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
@@ -238,7 +245,7 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          if (room.currentRound === room.rounds) {
+          if (room.currentRound > room.rounds) {
             ws.send(JSON.stringify({ type: "gameOver" }));
             return;
           }
