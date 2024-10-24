@@ -47,11 +47,19 @@ wss.on("connection", (ws) => {
           });
           await newRoom.save();
 
-          broadcast({
-            room: newRoom,
-            data: { playerId: user.id },
-            type: "roomCreated",
-          });
+          ws.send(
+            JSON.stringify({
+              type: "roomCreated",
+              room: newRoom,
+              playerId: user.id,
+            })
+          );
+
+          // broadcast({
+          //   room: newRoom,
+          //   data: { playerId: user.id },
+          //   type: "roomCreated",
+          // });
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
@@ -88,11 +96,13 @@ wss.on("connection", (ws) => {
 
             await room.save();
 
-            broadcast({
-              room,
-              data: { playerId: joinUser.id },
-              type: "roomJoined",
-            });
+            ws.send(
+              JSON.stringify({
+                type: "roomJoined",
+                room,
+                playerId: joinUser.id,
+              })
+            );
           } catch (error) {
             ws.send(JSON.stringify({ type: "error", message: error.message }));
           }
