@@ -469,7 +469,7 @@ function broadcastData(type, data) {
 function broadcast({ room, data = {}, type = "broadcast" }) {
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({ type: type, room, additionalData: data }));
+      client.send(JSON.stringify({ type: type, room, data }));
     }
   });
 }
