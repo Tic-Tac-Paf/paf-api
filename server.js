@@ -96,13 +96,15 @@ wss.on("connection", (ws) => {
 
             await room.save();
 
-            ws.send(
-              JSON.stringify({
-                type: "roomJoined",
-                room,
-                playerId: joinUser.id,
-              })
-            );
+            broadcastData("userJoinedRoom", { room, playerId: joinUser.id });
+
+            // ws.send(
+            //   JSON.stringify({
+            //     type: "roomJoined",
+            //     room,
+            //     playerId: joinUser.id,
+            //   })
+            // );
           } catch (error) {
             ws.send(JSON.stringify({ type: "error", message: error.message }));
           }
