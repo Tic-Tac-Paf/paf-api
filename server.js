@@ -473,7 +473,7 @@ wss.on("connection", (ws) => {
 function broadcastData(type, data) {
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({ type, data }));
+      client.send(JSON.stringify(type, data));
     }
   });
 }
