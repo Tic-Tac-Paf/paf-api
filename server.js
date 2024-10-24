@@ -387,7 +387,7 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          if (room.gameMode !== "in-game") {
+          if (room.gameMode !== "in_game") {
             ws.send(JSON.stringify({ type: "gameNotStarted" }));
             return;
           }
