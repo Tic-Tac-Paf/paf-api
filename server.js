@@ -162,7 +162,7 @@ wss.on("connection", (ws) => {
               })
             );
 
-            broadcast(...updateRoom, question);
+            broadcast(updateRoom, question);
           }
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
