@@ -155,7 +155,7 @@ wss.on("connection", (ws) => {
             );
 
             broadcast({
-              room: { ...updateRoom, question },
+              room: { ...updateRoom._doc, questions: question },
               type: "updatedRoom",
             });
           }
