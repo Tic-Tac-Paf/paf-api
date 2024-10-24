@@ -47,15 +47,11 @@ wss.on("connection", (ws) => {
           });
           await newRoom.save();
 
-          ws.send(
-            JSON.stringify({
-              type: "roomCreated",
-              room: newRoom,
-              playerId: user.id,
-            })
-          );
-
-          broadcastRoom(newRoom, user.id);
+          broadcast({
+            room: newRoom,
+            data: { playerId: user.id },
+            type: "roomCreated",
+          });
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
@@ -92,15 +88,11 @@ wss.on("connection", (ws) => {
 
             await room.save();
 
-            ws.send(
-              JSON.stringify({
-                type: "roomJoined",
-                room,
-                playerId: joinUser.id,
-              })
-            );
-
-            broadcastRoom(room, joinUser.id);
+            broadcast({
+              ...room,
+              data: { playerId: joinUser.id },
+              type: "roomJoined",
+            });
           } catch (error) {
             ws.send(JSON.stringify({ type: "error", message: error.message }));
           }
@@ -162,7 +154,10 @@ wss.on("connection", (ws) => {
               })
             );
 
-            broadcast(updateRoom, question);
+            broadcast({
+              room: { ...updateRoom, question },
+              type: "updatedRoom",
+            });
           }
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
@@ -276,7 +271,7 @@ wss.on("connection", (ws) => {
 
           ws.send(JSON.stringify({ type: "wordSent" }));
 
-          broadcast(room);
+          broadcast({ room });
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
@@ -345,7 +340,11 @@ wss.on("connection", (ws) => {
             _id: room.questions[0],
           });
 
-          broadcast(room, { type: "gameStarted", question });
+          broadcast({
+            room,
+            type: "gameStarted",
+            data: { question },
+          });
         } catch (err) {
           ws.send(JSON.stringify({ type: "error", message: err.message }));
         }
@@ -381,7 +380,7 @@ wss.on("connection", (ws) => {
           room.currentRound += 1;
           await room.save();
 
-          broadcast(room, { type: "nextRound", question });
+          broadcast({ room, type: "nextRound", data: { question } });
         } catch (err) {
           ws.send(JSON.stringify({ type: "error", message: err.message }));
         }
@@ -427,7 +426,7 @@ wss.on("connection", (ws) => {
 
           ws.send(JSON.stringify({ type: "wordValidated" }));
 
-          broadcast(room);
+          broadcast({ room });
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
@@ -453,12 +452,10 @@ function broadcastRoom(room, playerId) {
   });
 }
 
-function broadcast(room, data = {}) {
+function broadcast({ room, data = {}, type = "broadcast" }) {
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(
-        JSON.stringify({ type: "broadcast", room, additionalData: data })
-      );
+      client.send(JSON.stringify({ type: type, room, additionalData: data }));
     }
   });
 }
