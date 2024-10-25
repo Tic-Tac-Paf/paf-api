@@ -319,8 +319,6 @@ wss.on("connection", (ws) => {
             })
           );
 
-          console.log(words);
-
           const results =
             playerData.map((player) => {
               return {
@@ -391,7 +389,11 @@ wss.on("connection", (ws) => {
 
           if (room.currentRound === room.rounds) {
             room.gameState = "game_over";
-            broadcast(room, { type: "gameOver" });
+            await room.save();
+            broadcast({
+              room,
+              type: "gameOver",
+            });
             ws.send(JSON.stringify({ type: "gameOver" }));
             return;
           }
@@ -454,6 +456,11 @@ wss.on("connection", (ws) => {
             return;
           }
 
+          if (room.words[`round_${currentRound}`][playerId].validated) {
+            ws.send(JSON.stringify({ type: "wordAlreadyValidated" }));
+            return;
+          }
+
           // Update the validation status of the word and add points if validated
           const updatedRoom = await Room.findOneAndUpdate(
             { code: roomCode },
@@ -462,17 +469,17 @@ wss.on("connection", (ws) => {
                 [`words.round_${currentRound}.${playerId}.validated`]:
                   isWordValidated,
               },
-              ...(isWordValidated && {
-                $inc: {
-                  "players.$[elem].points": 10,
-                },
-              }),
+              $inc: {
+                "players.$[elem].points": isWordValidated ? 10 : 0,
+              },
             },
             {
               new: true, // Return the updated room
-              arrayFilters: [{ "elem.id": playerId }], // Locate the player in the array
+              arrayFilters: [{ "elem.id": playerId }],
             }
           );
+
+          const player = await User.findOne({ id: playerId });
 
           const results = Object.entries(
             updatedRoom.words[`round_${currentRound}`]
@@ -480,6 +487,7 @@ wss.on("connection", (ws) => {
             playerId,
             word: word.word,
             validated: word.validated,
+            username: player.username,
           }));
 
           // Send the results after the update
