@@ -479,18 +479,20 @@ wss.on("connection", (ws) => {
             }
           );
 
-          const player = room.players.find((player) => player.id === playerId);
-
-          console.log(player);
-
           const results = Object.entries(
             updatedRoom.words[`round_${currentRound}`]
-          ).map(([playerId, word]) => ({
-            playerId,
-            word: word.word,
-            validated: word.validated,
-            username: player.username,
-          }));
+          ).map(([playerId, word]) => {
+            const player = room.players.find(
+              (player) => player.id === playerId
+            );
+
+            return {
+              playerId,
+              word: word.word,
+              validated: word.validated,
+              username: player.username,
+            };
+          });
 
           // Send the results after the update
           ws.send(JSON.stringify({ type: "wordValidated", results }));
