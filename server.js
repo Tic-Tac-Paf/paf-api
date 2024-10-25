@@ -387,7 +387,7 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          if (room.gameMode !== "in_game") {
+          if (room.gameState !== "in_game") {
             ws.send(JSON.stringify({ type: "gameNotStarted" }));
             return;
           }
@@ -449,10 +449,25 @@ wss.on("connection", (ws) => {
             [`words.round_${currentRound}.${playerId}.validated`]:
               isWordValidated,
           });
+          // Utilise findOneAndUpdate pour récupérer la room mise à jour
+          const updatedRoom = await Room.findOneAndUpdate(
+            { code: roomCode },
+            {
+              $set: {
+                [`words.round_${currentRound}.${playerId}.validated`]:
+                  isWordValidated,
+              },
+            },
+            { new: true } // Récupère la room mise à jour
+          );
 
-          ws.send(JSON.stringify({ type: "wordValidated" }));
+          const results = updatedRoom.words[`round_${currentRound}`];
 
-          broadcast({ room });
+          // Envoie les résultats après la mise à jour
+          ws.send(JSON.stringify({ type: "wordValidated", results }));
+
+          // Broadcast de la room mise à jour
+          broadcast({ room: updatedRoom });
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
