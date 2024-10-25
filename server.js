@@ -483,7 +483,15 @@ wss.on("connection", (ws) => {
             { new: true } // Récupère la room mise à jour
           );
 
-          const results = updatedRoom.words[`round_${currentRound}`];
+          const results = Object.entries(
+            updatedRoom.words[`round_${currentRound}`]
+          ).map(([playerId, word]) => {
+            return {
+              playerId,
+              word: word.word,
+              validated: word.validated,
+            };
+          });
 
           // Envoie les résultats après la mise à jour
           ws.send(JSON.stringify({ type: "wordValidated", results }));
