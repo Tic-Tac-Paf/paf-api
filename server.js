@@ -334,19 +334,6 @@ wss.on("connection", (ws) => {
             _id: room.questions[currentRound - 1],
           });
 
-          // const results = [];
-
-          // for (const [playerId, word] of Object.entries(words)) {
-          //   const result = { playerId, word: word || "" };
-          //   const user = await User.findOne({ id: playerId });
-
-          //   results.push({ ...result, username: user.username });
-          // }
-
-          // const question = await Questions.findOne({
-          //   _id: room.questions[currentRound - 1],
-          // });
-
           ws.send(JSON.stringify({ type: "roundResults", results, question }));
         } catch (error) {
           console.log(error);
@@ -467,11 +454,7 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          await room.updateOne({
-            [`words.round_${currentRound}.${playerId}.validated`]:
-              isWordValidated,
-          });
-          // Utilise findOneAndUpdate pour récupérer la room mise à jour
+          // Update the validation status of the word and add points if validated
           const updatedRoom = await Room.findOneAndUpdate(
             { code: roomCode },
             {
@@ -479,24 +462,30 @@ wss.on("connection", (ws) => {
                 [`words.round_${currentRound}.${playerId}.validated`]:
                   isWordValidated,
               },
+              ...(isWordValidated && {
+                $inc: {
+                  "players.$[elem].points": 10,
+                },
+              }),
             },
-            { new: true } // Récupère la room mise à jour
+            {
+              new: true, // Return the updated room
+              arrayFilters: [{ "elem.id": playerId }], // Locate the player in the array
+            }
           );
 
           const results = Object.entries(
             updatedRoom.words[`round_${currentRound}`]
-          ).map(([playerId, word]) => {
-            return {
-              playerId,
-              word: word.word,
-              validated: word.validated,
-            };
-          });
+          ).map(([playerId, word]) => ({
+            playerId,
+            word: word.word,
+            validated: word.validated,
+          }));
 
-          // Envoie les résultats après la mise à jour
+          // Send the results after the update
           ws.send(JSON.stringify({ type: "wordValidated", results }));
 
-          // Broadcast de la room mise à jour
+          // Broadcast the updated room
           broadcast({ room: updatedRoom });
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));

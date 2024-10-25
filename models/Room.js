@@ -10,6 +10,7 @@ const RoomSchema = new mongoose.Schema({
     {
       id: String,
       username: String,
+      points: { type: Number, default: 0 },
     },
   ],
   gameMode: String,
