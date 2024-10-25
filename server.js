@@ -203,7 +203,10 @@ wss.on("connection", (ws) => {
           for (let i = 0; i < room.rounds; i++) {
             const set = [];
             for (let j = 0; j < 3; j++) {
+              // max index is the length of the questions array
               const randomIndex = Math.floor(Math.random() * questions.length);
+
+              console.log("Random index", randomIndex);
 
               // Extract only the fields we need
               let question = {
