@@ -311,19 +311,30 @@ wss.on("connection", (ws) => {
           // }
 
           const words = room.words[`round_${currentRound}`];
+          const roomPlayers = room.players.map((player) => player.id);
 
-          const results = [];
-
-          for (const [playerId, word] of Object.entries(words)) {
-            const result = { playerId, word: word || "" };
-            const user = await User.findOne({ id: playerId });
-
-            results.push({ ...result, username: user.username });
-          }
+          const results =
+            roomPlayers.map((playerId) => {
+              const word = words[playerId] || {};
+              return { playerId, word: word.word || "" };
+            }) || [];
 
           const question = await Questions.findOne({
             _id: room.questions[currentRound - 1],
           });
+
+          // const results = [];
+
+          // for (const [playerId, word] of Object.entries(words)) {
+          //   const result = { playerId, word: word || "" };
+          //   const user = await User.findOne({ id: playerId });
+
+          //   results.push({ ...result, username: user.username });
+          // }
+
+          // const question = await Questions.findOne({
+          //   _id: room.questions[currentRound - 1],
+          // });
 
           ws.send(JSON.stringify({ type: "roundResults", results, question }));
         } catch (error) {
