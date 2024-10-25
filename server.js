@@ -313,10 +313,19 @@ wss.on("connection", (ws) => {
           const words = room.words[`round_${currentRound}`];
           const roomPlayers = room.players.map((player) => player.id);
 
-          const results =
+          const playerData = await Promise.all(
             roomPlayers.map((playerId) => {
-              const word = words[playerId] || {};
-              return { playerId, word: word.word || "" };
+              return User.findOne({ id: playerId });
+            })
+          );
+
+          const results =
+            playerData.map((player) => {
+              return {
+                playerId: player.id,
+                username: player.username,
+                word: words[player.id] ? words[player.id].word : "",
+              };
             }) || [];
 
           const question = await Questions.findOne({
