@@ -315,7 +315,7 @@ wss.on("connection", (ws) => {
           const results = [];
 
           for (const [playerId, word] of Object.entries(words)) {
-            const result = { playerId, word: word.word || "" };
+            const result = { playerId, word: word || "" };
             const user = await User.findOne({ id: playerId });
 
             results.push({ ...result, username: user.username });
