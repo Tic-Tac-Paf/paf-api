@@ -479,7 +479,9 @@ wss.on("connection", (ws) => {
             }
           );
 
-          const player = await User.findOne({ id: playerId });
+          const player = room.players.find((player) => player.id === playerId);
+
+          console.log(player);
 
           const results = Object.entries(
             updatedRoom.words[`round_${currentRound}`]
