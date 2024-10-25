@@ -30,12 +30,13 @@ wss.on("connection", (ws) => {
 
     const answerTimeouts = {};
 
-    // Helper function to clear timeouts
-    function clearTimeoutForRoom(roomCode) {
-      if (answerTimeouts[roomCode]) {
-        clearTimeout(answerTimeouts[roomCode]);
-        delete answerTimeouts[roomCode];
+    // Helper function to clear the timer and reset timeoutExpired flag
+    function clearTimeoutForRoom(room) {
+      if (answerTimeouts[room.code]) {
+        clearTimeout(answerTimeouts[room.code]);
+        delete answerTimeouts[room.code];
       }
+      room.timeoutExpired = false; // Reset the flag for the next round
     }
 
     switch (data.type) {
@@ -265,6 +266,13 @@ wss.on("connection", (ws) => {
             return;
           }
 
+          if (room.timeoutExpired) {
+            ws.send(
+              JSON.stringify({ type: "roundTimeout", message: "Time is up!" })
+            );
+            return;
+          }
+
           if (room.currentRound > room.rounds) {
             ws.send(JSON.stringify({ type: "gameOver" }));
             return;
@@ -370,6 +378,8 @@ wss.on("connection", (ws) => {
           }
 
           room.gameState = "in_game";
+          room.currentRound = 1;
+          room.timeoutExpired = false; // Initialize the flag
           await room.save();
 
           const question = await Questions.findOne({
@@ -377,8 +387,10 @@ wss.on("connection", (ws) => {
           });
 
           // Start the 15-second timer for the current round
-          clearTimeoutForRoom(room.code); // Clear any existing timeouts
-          answerTimeouts[room.code] = setTimeout(() => {
+          clearTimeoutForRoom(room);
+          answerTimeouts[room.code] = setTimeout(async () => {
+            room.timeoutExpired = true;
+            await room.save();
             broadcastData("roundTimeout", { roomCode: room.code });
           }, 15000);
 
@@ -427,11 +439,14 @@ wss.on("connection", (ws) => {
           });
 
           room.currentRound += 1;
+          room.timeoutExpired = false; // Reset flag for new round
           await room.save();
 
           // Reset the 15-second timer for the new round
-          clearTimeoutForRoom(room.code); // Clear previous round timeout
-          answerTimeouts[room.code] = setTimeout(() => {
+          clearTimeoutForRoom(room);
+          answerTimeouts[room.code] = setTimeout(async () => {
+            room.timeoutExpired = true;
+            await room.save();
             broadcastData("roundTimeout", { roomCode: room.code });
           }, 15000);
 
