@@ -28,17 +28,6 @@ wss.on("connection", (ws) => {
   ws.on("message", async (message) => {
     const data = JSON.parse(message);
 
-    const answerTimeouts = {};
-
-    // Helper function to clear the timer and reset timeoutExpired flag
-    function clearTimeoutForRoom(room) {
-      if (answerTimeouts[room.code]) {
-        clearTimeout(answerTimeouts[room.code]);
-        delete answerTimeouts[room.code];
-      }
-      room.timeoutExpired = false; // Reset the flag for the next round
-    }
-
     switch (data.type) {
       case "createRoom":
         let user = await User.findOne({ id: data.playerId });
@@ -386,14 +375,6 @@ wss.on("connection", (ws) => {
             _id: room.questions[0],
           });
 
-          // Start the 15-second timer for the current round
-          clearTimeoutForRoom(room);
-          answerTimeouts[room.code] = setTimeout(async () => {
-            room.timeoutExpired = true;
-            await room.save();
-            broadcastData("roundTimeout", { roomCode: room.code });
-          }, 15000);
-
           broadcast({ room, type: "gameStarted" });
           broadcastData("roomQuestion", {
             question: {
@@ -441,14 +422,6 @@ wss.on("connection", (ws) => {
           room.currentRound += 1;
           room.timeoutExpired = false; // Reset flag for new round
           await room.save();
-
-          // Reset the 15-second timer for the new round
-          clearTimeoutForRoom(room);
-          answerTimeouts[room.code] = setTimeout(async () => {
-            room.timeoutExpired = true;
-            await room.save();
-            broadcastData("roundTimeout", { roomCode: room.code });
-          }, 15000);
 
           broadcast({ room, type: "nextRound" });
           broadcastData("roomQuestion", {
