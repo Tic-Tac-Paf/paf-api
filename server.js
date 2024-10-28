@@ -586,11 +586,11 @@ wss.on("connection", (ws) => {
 
           // Check if timer is greater than 10 seconds
           const timeLeft = activeTimers[data.roomCode];
-          if (timeLeft > 10) {
+          if (timeLeft < 5) {
             ws.send(
               JSON.stringify({
-                type: "cannotBlock",
-                message: "Cannot block player, timer is above 10 seconds.",
+                type: "timerTooShort",
+                message: "Cannot block typing with less than 5 seconds left",
               })
             );
             return;
