@@ -591,6 +591,36 @@ wss.on("connection", (ws) => {
         }
         break;
 
+      case "playerHint":
+        try {
+          const room = await Room.findOne({ code: data.roomCode });
+          if (!room) {
+            ws.send(JSON.stringify({ type: "roomNotFound" }));
+            return;
+          }
+
+          if (room.admin.id !== data.adminId) {
+            ws.send(JSON.stringify({ type: "notAdmin" }));
+            return;
+          }
+
+          const question = await Questions.findOne({
+            _id: room.questions[room.currentRound - 1],
+          });
+
+          if (!question || !question.answer) {
+            ws.send(JSON.stringify({ type: "questionNotFound" }));
+            return;
+          }
+
+          const hint = question.answer.substring(0, 3);
+
+          broadcastData("playerHint", { hint, playerId: data.playerId });
+        } catch (error) {
+          ws.send(JSON.stringify({ type: "error", message: error.message }));
+        }
+        break;
+
       default:
         ws.send(JSON.stringify({ type: "unknownCommand" }));
         break;
