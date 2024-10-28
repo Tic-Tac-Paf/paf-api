@@ -33,6 +33,7 @@ function startTimer(roomCode) {
     if (timeLeft > 0) {
       // Broadcast the remaining time
       broadcastData("timerUpdate", { roomCode, timeLeft });
+      activeTimers[roomCode] = timeLeft;
       timeLeft -= 1;
     } else {
       // Timer expired
@@ -544,6 +545,47 @@ wss.on("connection", (ws) => {
 
           ws.send(JSON.stringify({ type: "wordValidated", results }));
           broadcast({ room: updatedRoom });
+        } catch (error) {
+          ws.send(JSON.stringify({ type: "error", message: error.message }));
+        }
+        break;
+
+      case "blockUserTyping":
+        const playerID = data.playerId;
+        const blockTime = data.blockTime ? data.blockTime * 1000 : 5000;
+
+        try {
+          const room = await Room.findOne({ code: data.roomCode });
+
+          if (!room) {
+            ws.send(JSON.stringify({ type: "roomNotFound" }));
+            return;
+          }
+
+          if (room.admin.id !== data.adminId) {
+            ws.send(JSON.stringify({ type: "notAdmin" }));
+            return;
+          }
+
+          // Check if timer is greater than 10 seconds
+          const timeLeft = activeTimers[data.roomCode];
+          if (timeLeft > 10) {
+            ws.send(
+              JSON.stringify({
+                type: "cannotBlock",
+                message: "Cannot block player, timer is above 10 seconds.",
+              })
+            );
+            return;
+          }
+
+          // Broadcast to block typing for the player
+          broadcastData({ type: "blockUserTyping", data: { playerID } });
+
+          // Set a timeout to unblock typing after the blockTime
+          setTimeout(() => {
+            broadcastData({ type: "unblockUserTyping", data: { playerID } });
+          }, blockTime);
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
