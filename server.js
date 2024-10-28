@@ -635,11 +635,9 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          const answer = question.answer;
-          const hint = answer
-            .split("")
-            .map((char, index) => (Math.random() < 0.5 ? char : "_"))
-            .join("");
+          // Generate a hint by taking the first few characters of the answer
+          const hintLength = Math.ceil(question.answer.length / 3); // e.g., 1/3 of the word length
+          const hint = question.answer.substring(0, hintLength);
 
           console.log("Hint", hint);
 
@@ -647,7 +645,6 @@ wss.on("connection", (ws) => {
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
-
         break;
 
       default:
