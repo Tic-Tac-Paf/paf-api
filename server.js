@@ -448,6 +448,7 @@ wss.on("connection", (ws) => {
 
           room.currentRound += 1;
           room.timeoutExpired = false; // Reset flag for new round
+          room.roundStartTime = Date.now(); // Track round start time
           await room.save();
 
           broadcast({ room, type: "nextRound" });
@@ -484,7 +485,7 @@ wss.on("connection", (ws) => {
           const currentRound = room.currentRound || 1;
           const playerEntry = room.words[`round_${currentRound}`][playerId];
 
-          if (playerEntry.validated) {
+          if (playerEntry?.hasOwnProperty("validated")) {
             return ws.send(JSON.stringify({ type: "wordAlreadyValidated" }));
           }
 
