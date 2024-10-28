@@ -359,8 +359,8 @@ wss.on("connection", (ws) => {
                 playerId: player.id,
                 username: player.username,
                 word: words[player.id] ? words[player.id].word : "",
-                responseTime: words?.[`round_${currentRound}`]?.[player.id]
-                  ? words?.[`round_${currentRound}`]?.[player.id]?.responseTime
+                responseTime: words?.[player.id]
+                  ? words?.[player.id]?.responseTime
                   : 0,
               };
             }) || [];
