@@ -309,7 +309,7 @@ wss.on("connection", (ws) => {
               ...room.words[`round_${currentRound}`],
               [`${data.playerId}`]: {
                 word: playerWord,
-                responseTime,
+                responseTime: responseTime || 15000,
               },
             },
           };
@@ -491,21 +491,26 @@ wss.on("connection", (ws) => {
 
           let pointsAwarded = 10; // Base points
           if (isWordValidated) {
-            const validatedEntries = Object.values(
-              room.words[`round_${currentRound}`]
-            )
-              .filter((entry) => entry.validated)
-              .sort((a, b) => a.responseTime - b.responseTime);
+            const roomPlayers = room.players.map((player) => player.id);
 
-            const position =
-              validatedEntries.findIndex((entry) => entry === playerEntry) + 1;
+            // Calculate bonus points based on response time position
+            const sortedPlayers = roomPlayers.sort((a, b) => {
+              return (
+                room.words[`round_${currentRound}`][a].responseTime -
+                room.words[`round_${currentRound}`][b].responseTime
+              );
+            });
 
-            if (position === 1) {
+            const responseTimePosition = sortedPlayers.indexOf(playerId);
+
+            if (responseTimePosition === 0) {
               pointsAwarded += 5;
-            } else if (position === 2) {
+            }
+            if (responseTimePosition === 1) {
               pointsAwarded += 3;
-            } else if (position === 3) {
-              pointsAwarded += 1;
+            }
+            if (responseTimePosition === 2) {
+              pointsAwarded += 2;
             }
           }
 
@@ -534,7 +539,7 @@ wss.on("connection", (ws) => {
                 ?.validated,
             responseTime:
               updatedRoom.words?.[`round_${currentRound}`]?.[player.id]
-                ?.responseTime,
+                ?.responseTime || 15000,
           }));
 
           ws.send(JSON.stringify({ type: "wordValidated", results }));
