@@ -534,18 +534,15 @@ wss.on("connection", (ws) => {
             }
           );
 
-          const results = Object.entries(
-            updatedRoom.words[`round_${currentRound}`]
-          ).map(([playerId, word]) => {
-            const player = room.players.find(
-              (player) => player.id === playerId
-            );
-
+          const results = room.players.map((player) => {
             return {
-              playerId,
-              word: word.word,
-              validated: word.validated,
+              playerId: player.id,
               username: player.username,
+              word: updatedRoom.words?.[`round_${currentRound}`]?.[player.id]
+                ?.word,
+              validated:
+                updatedRoom.words?.[`round_${currentRound}`]?.[player.id]
+                  ?.validated,
             };
           });
 
