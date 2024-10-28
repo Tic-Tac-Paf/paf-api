@@ -308,7 +308,7 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          if (room.words[`round_${room.currentRound}`][data.playerId]) {
+          if (room.words?.[`round_${room.currentRound}`]?.[data.playerId]) {
             ws.send(JSON.stringify({ type: "wordAlreadySent" }));
             return;
           }
@@ -331,7 +331,6 @@ wss.on("connection", (ws) => {
           await room.save();
 
           ws.send(JSON.stringify({ type: "wordSent" }));
-
           broadcast({ room });
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
