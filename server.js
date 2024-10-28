@@ -24,6 +24,40 @@ mongoose
 
 const PORT = process.env.PORT || 3000;
 
+let activeTimers = {}; // To track active timers per room
+
+function startTimer(roomCode) {
+  let timeLeft = 15;
+
+  const timer = setInterval(async () => {
+    if (timeLeft > 0) {
+      // Broadcast the remaining time
+      broadcastData("timerUpdate", { roomCode, timeLeft });
+      timeLeft -= 1;
+    } else {
+      // Timer expired
+      clearInterval(timer);
+      activeTimers[roomCode] = null;
+
+      // Set timeoutExpired flag in the room document
+      const room = await Room.findOneAndUpdate(
+        { code: roomCode },
+        { $set: { timeoutExpired: true } },
+        { new: true }
+      );
+
+      // Broadcast the round timeout event to all clients in the room
+      // broadcastData("roundTimeout", { roomCode });
+      broadcast({ room, type: "roundTimeout" });
+
+      console.log(`Timer expired for room: ${roomCode}`);
+    }
+  }, 1000);
+
+  // Save the timer to stop it if needed
+  activeTimers[roomCode] = timer;
+}
+
 wss.on("connection", (ws) => {
   ws.on("message", async (message) => {
     const data = JSON.parse(message);
@@ -374,6 +408,7 @@ wss.on("connection", (ws) => {
           room.gameState = "in_game";
           room.currentRound = 1;
           room.timeoutExpired = false; // Initialize the flag
+
           await room.save();
 
           const question = await Questions.findOne({
@@ -388,6 +423,10 @@ wss.on("connection", (ws) => {
             },
             roomCode: room.code,
           });
+
+          // Start a 15-second timer for the first round
+          if (activeTimers[room.code]) clearInterval(activeTimers[room.code]); // Clear any existing timer
+          startTimer(room.code);
         } catch (err) {
           ws.send(JSON.stringify({ type: "error", message: err.message }));
         }
@@ -395,9 +434,7 @@ wss.on("connection", (ws) => {
 
       case "nextRound":
         try {
-          const room = await Room.findOne({
-            code: data.roomCode,
-          });
+          const room = await Room.findOne({ code: data.roomCode });
 
           if (room.admin.id !== data.adminId) {
             ws.send(JSON.stringify({ type: "notAdmin" }));
@@ -407,10 +444,7 @@ wss.on("connection", (ws) => {
           if (room.currentRound === room.rounds) {
             room.gameState = "game_over";
             await room.save();
-            broadcast({
-              room,
-              type: "gameOver",
-            });
+            broadcast({ room, type: "gameOver" });
             ws.send(JSON.stringify({ type: "gameOver" }));
             return;
           }
@@ -436,6 +470,10 @@ wss.on("connection", (ws) => {
             },
             roomCode: room.code,
           });
+
+          // Start a 15-second timer for the new round
+          if (activeTimers[room.code]) clearInterval(activeTimers[room.code]); // Clear any existing timer
+          startTimer(room.code);
         } catch (err) {
           ws.send(JSON.stringify({ type: "error", message: err.message }));
         }
