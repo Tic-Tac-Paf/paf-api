@@ -479,10 +479,6 @@ wss.on("connection", (ws) => {
           const currentRound = room.currentRound || 1;
           const playerEntry = room.words[`round_${currentRound}`][playerId];
 
-          if (!playerEntry) {
-            ws.send(JSON.stringify({ type: "noWord" }));
-            return;
-          }
           if (playerEntry.validated) {
             ws.send(JSON.stringify({ type: "wordAlreadyValidated" }));
             return;
