@@ -604,6 +604,11 @@ wss.on("connection", (ws) => {
             return;
           }
 
+          if (room.gameMode !== "findWord") {
+            ws.send(JSON.stringify({ type: "notFindWordMode" }));
+            return;
+          }
+
           const question = await Questions.findOne({
             _id: room.questions[room.currentRound - 1],
           });
@@ -613,12 +618,19 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          const hint = question.answer.substring(0, 3);
+          const answer = question.answer;
+          const hint = answer
+            .split("")
+            .map((char, index) => (Math.random() < 0.5 ? char : "_"))
+            .join("");
+
+          console.log("Hint", hint);
 
           broadcastData("playerHint", { hint, playerId: data.playerId });
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
+
         break;
 
       default:
