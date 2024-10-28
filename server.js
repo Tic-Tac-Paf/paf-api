@@ -275,7 +275,6 @@ wss.on("connection", (ws) => {
 
       case "sendWord":
         const playerWord = data.word;
-
         try {
           const room = await Room.findOne({ code: data.roomCode });
 
@@ -283,12 +282,6 @@ wss.on("connection", (ws) => {
             ws.send(JSON.stringify({ type: "roomNotFound" }));
             return;
           }
-
-          if (room.gameState !== "in_game") {
-            ws.send(JSON.stringify({ type: "notInGame" }));
-            return;
-          }
-
           if (room.timeoutExpired) {
             ws.send(
               JSON.stringify({ type: "roundTimeout", message: "Time is up!" })
@@ -296,41 +289,27 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          if (room.currentRound > room.rounds) {
-            ws.send(JSON.stringify({ type: "gameOver" }));
-            return;
-          }
-
           const player = await User.findOne({ id: data.playerId });
-
           if (!player) {
             ws.send(JSON.stringify({ type: "playerNotFound" }));
             return;
           }
 
-          if (room.words?.[`round_${room.currentRound}`]?.[data.playerId]) {
-            ws.send(JSON.stringify({ type: "wordAlreadySent" }));
-            return;
-          }
+          const currentRound = room.currentRound || 1;
+          const responseTime = Date.now() - room.roundStartTime; // Calculate response time in milliseconds
 
-          let currentRound = room.currentRound || 1;
-
-          if (!room.words[`round_${currentRound}`]) {
+          // Store word and response time without awarding points yet
+          if (!room.words[`round_${currentRound}`])
             room.words[`round_${currentRound}`] = {};
-          }
-
-          room.words = {
-            [`round_${currentRound}`]: {
-              ...room.words[`round_${currentRound}`],
-              [`${data.playerId}`]: {
-                word: playerWord,
-              },
-            },
+          room.words[`round_${currentRound}`][data.playerId] = {
+            word: playerWord,
+            responseTime, // Store response time
+            validated: false, // Track validation status
           };
 
           await room.save();
+          ws.send(JSON.stringify({ type: "wordSent", responseTime }));
 
-          ws.send(JSON.stringify({ type: "wordSent" }));
           broadcast({ room });
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
@@ -407,6 +386,7 @@ wss.on("connection", (ws) => {
           room.gameState = "in_game";
           room.currentRound = 1;
           room.timeoutExpired = false; // Initialize the flag
+          room.roundStartTime = Date.now(); // Track round start time
 
           await room.save();
 
@@ -487,73 +467,67 @@ wss.on("connection", (ws) => {
 
         try {
           const room = await Room.findOne({ code: roomCode });
-
           if (!room) {
             ws.send(JSON.stringify({ type: "roomNotFound" }));
             return;
           }
-
           if (room.admin.id !== adminId) {
             ws.send(JSON.stringify({ type: "notAdmin" }));
             return;
           }
 
           const currentRound = room.currentRound || 1;
+          const playerEntry = room.words[`round_${currentRound}`][playerId];
 
-          if (!room.words[`round_${currentRound}`]) {
-            ws.send(JSON.stringify({ type: "noWords" }));
+          if (!playerEntry) {
+            ws.send(JSON.stringify({ type: "noWord" }));
             return;
           }
-
-          // if (!room.words[`round_${currentRound}`][playerId]) {
-          //   ws.send(JSON.stringify({ type: "noWord" }));
-          //   return;
-          // }
-
-          if (room.words?.[`round_${currentRound}`]?.[playerId]?.validated) {
+          if (playerEntry.validated) {
             ws.send(JSON.stringify({ type: "wordAlreadyValidated" }));
             return;
           }
 
-          // Update the validation status of the word and add points if validated
-          const updatedRoom = await Room.findOneAndUpdate(
-            { code: roomCode },
-            {
-              $set: {
-                [`words.round_${currentRound}.${playerId}.validated`]:
-                  isWordValidated,
-              },
-              $inc: {
-                "players.$[elem].points": isWordValidated ? 10 : 0,
-              },
-            },
-            {
-              new: true, // Return the updated room
-              arrayFilters: [{ "elem.id": playerId }],
-            }
-          );
+          // Mark word as validated
+          playerEntry.validated = isWordValidated;
+          await room.save();
 
-          const results = room.players.map((player) => {
-            return {
-              playerId: player.id,
-              username: player.username,
-              word: updatedRoom.words?.[`round_${currentRound}`]?.[player.id]
-                ?.word,
-              validated:
-                updatedRoom.words?.[`round_${currentRound}`]?.[player.id]
-                  ?.validated,
-            };
-          });
+          // If validated, proceed to award extra points based on response ranking
+          if (isWordValidated) {
+            const validatedEntries = Object.values(
+              room.words[`round_${currentRound}`]
+            )
+              .filter((entry) => entry.validated)
+              .sort((a, b) => a.responseTime - b.responseTime); // Sort by response time
 
-          // Send the results after the update
-          ws.send(JSON.stringify({ type: "wordValidated", results }));
+            // Find player's position in sorted validated entries
+            const position =
+              validatedEntries.findIndex((entry) => entry === playerEntry) + 1;
+            let pointsAwarded = 10; // Base points for correct validation
 
-          // Broadcast the updated room
-          broadcast({ room: updatedRoom });
+            // Award extra points based on rank
+            if (position === 1) pointsAwarded += 5;
+            else if (position === 2) pointsAwarded += 3;
+            else if (position === 3) pointsAwarded += 1;
+
+            await Room.updateOne(
+              { code: roomCode, "players.id": playerId },
+              { $inc: { "players.$.points": pointsAwarded } }
+            );
+
+            ws.send(
+              JSON.stringify({
+                type: "wordValidated",
+                playerId,
+                position,
+                pointsAwarded,
+              })
+            );
+            broadcast({ room });
+          }
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
         }
-
         break;
 
       default:

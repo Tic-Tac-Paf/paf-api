@@ -21,6 +21,7 @@ const RoomSchema = new mongoose.Schema({
   gameState: { type: String, default: "lobby" },
   questions: { type: Array, default: [] },
   timeoutExpired: { type: Boolean, default: false },
+  roundStartTime: { type: Date, default: null },
 });
 
 const Room = mongoose.model("Room", RoomSchema);
