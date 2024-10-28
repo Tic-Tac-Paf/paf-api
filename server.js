@@ -359,6 +359,9 @@ wss.on("connection", (ws) => {
                 playerId: player.id,
                 username: player.username,
                 word: words[player.id] ? words[player.id].word : "",
+                responseTime: words[`round_${currentRound}`][player.id]
+                  ? words[`round_${currentRound}`][player.id].responseTime
+                  : 0,
               };
             }) || [];
 
@@ -512,9 +515,10 @@ wss.on("connection", (ws) => {
                 [`words.round_${currentRound}.${playerId}.validated`]:
                   isWordValidated,
               },
-              ...(isWordValidated && {
-                $inc: { "players.$[elem].points": pointsAwarded },
-              }),
+
+              $inc: {
+                "players.$[elem].points": isWordValidated ? pointsAwarded : 0,
+              },
             },
             { new: true, arrayFilters: [{ "elem.id": playerId }] }
           );
