@@ -282,6 +282,7 @@ wss.on("connection", (ws) => {
             ws.send(JSON.stringify({ type: "roomNotFound" }));
             return;
           }
+
           if (room.timeoutExpired) {
             ws.send(
               JSON.stringify({ type: "roundTimeout", message: "Time is up!" })
@@ -299,16 +300,22 @@ wss.on("connection", (ws) => {
           const responseTime = Date.now() - room.roundStartTime; // Calculate response time in milliseconds
 
           // Store word and response time without awarding points yet
-          if (!room.words[`round_${currentRound}`])
+          if (!room.words[`round_${currentRound}`]) {
             room.words[`round_${currentRound}`] = {};
-          room.words[`round_${currentRound}`][data.playerId] = {
-            word: playerWord,
-            responseTime, // Store response time
-            validated: false, // Track validation status
+          }
+
+          room.words = {
+            [`round_${currentRound}`]: {
+              ...room.words[`round_${currentRound}`],
+              [`${data.playerId}`]: {
+                word: playerWord,
+                responseTime,
+              },
+            },
           };
 
           await room.save();
-          ws.send(JSON.stringify({ type: "wordSent", responseTime }));
+          ws.send(JSON.stringify({ type: "wordSent" }));
 
           broadcast({ room });
         } catch (error) {
