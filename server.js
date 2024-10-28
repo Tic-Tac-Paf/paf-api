@@ -362,7 +362,7 @@ wss.on("connection", (ws) => {
                 word: words[player.id] ? words[player.id].word : "",
                 responseTime: words?.[player.id]
                   ? words?.[player.id]?.responseTime
-                  : 0,
+                  : 15000,
               };
             }) || [];
 
