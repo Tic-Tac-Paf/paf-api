@@ -444,7 +444,6 @@ wss.on("connection", (ws) => {
             room.gameState = "game_over";
             await room.save();
             broadcast({ room, type: "gameOver" });
-            ws.send(JSON.stringify({ type: "gameOver" }));
             return;
           }
 
