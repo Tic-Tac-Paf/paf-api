@@ -562,6 +562,16 @@ wss.on("connection", (ws) => {
             return;
           }
 
+          if (room.gameState !== "in_game") {
+            ws.send(JSON.stringify({ type: "gameNotStarted" }));
+            return;
+          }
+
+          if (!room.players.find((player) => player.id === playerID)) {
+            ws.send(JSON.stringify({ type: "playerNotFound" }));
+            return;
+          }
+
           if (room.admin.id !== data.adminId) {
             ws.send(JSON.stringify({ type: "notAdmin" }));
             return;
