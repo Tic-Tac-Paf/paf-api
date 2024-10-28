@@ -510,20 +510,25 @@ wss.on("connection", (ws) => {
             else if (position === 2) pointsAwarded += 3;
             else if (position === 3) pointsAwarded += 1;
 
-            await Room.updateOne(
+            const updatedRoom = await Room.findOneAndUpdate(
               { code: roomCode, "players.id": playerId },
               { $inc: { "players.$.points": pointsAwarded } }
             );
 
-            ws.send(
-              JSON.stringify({
-                type: "wordValidated",
-                playerId,
-                position,
-                pointsAwarded,
-              })
-            );
-            broadcast({ room });
+            const results = updatedRoom.players.map((player) => {
+              return {
+                playerId: player.id,
+                username: player.username,
+                word: updatedRoom.words?.[`round_${currentRound}`]?.[player.id]
+                  ?.word,
+                validated:
+                  updatedRoom.words?.[`round_${currentRound}`]?.[player.id]
+                    ?.validated,
+              };
+            });
+
+            ws.send(JSON.stringify({ type: "wordValidated", results }));
+            broadcast({ room: updatedRoom });
           }
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
