@@ -558,10 +558,10 @@ wss.on("connection", (ws) => {
         break;
 
       case "blockUserTyping":
-        const playerID = data.playerId;
-        const blockTime = data.blockTime ? data.blockTime * 1000 : 5000;
-
         try {
+          const playerId = data.playerId;
+          const blockTime = data.blockTime ? data.blockTime * 1000 : 5000;
+
           const room = await Room.findOne({ code: data.roomCode });
 
           if (!room) {
@@ -574,7 +574,7 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          if (!room.players.find((player) => player.id === playerID)) {
+          if (!room.players.find((player) => player.id === playerId)) {
             ws.send(JSON.stringify({ type: "playerNotFound" }));
             return;
           }
@@ -597,11 +597,11 @@ wss.on("connection", (ws) => {
           }
 
           // Broadcast to block typing for the player
-          broadcastData({ type: "blockUserTyping", data: { playerID } });
+          broadcastData("blockUserTyping", { playerId });
 
           // Set a timeout to unblock typing after the blockTime
           setTimeout(() => {
-            broadcastData({ type: "unblockUserTyping", data: { playerID } });
+            broadcastData("unblockUserTyping", { playerId });
           }, blockTime);
         } catch (error) {
           ws.send(JSON.stringify({ type: "error", message: error.message }));
