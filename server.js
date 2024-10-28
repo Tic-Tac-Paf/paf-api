@@ -560,7 +560,7 @@ wss.on("connection", (ws) => {
       case "blockUserTyping":
         try {
           const playerId = data.playerId;
-          const blockTime = data.blockTime ? data.blockTime * 1000 : 5000;
+          const blockTime = 5000;
 
           const room = await Room.findOne({ code: data.roomCode });
 
@@ -598,6 +598,8 @@ wss.on("connection", (ws) => {
 
           // Broadcast to block typing for the player
           broadcastData("blockUserTyping", { playerId });
+
+          console.log("Blocked typing for player", playerId);
 
           // Set a timeout to unblock typing after the blockTime
           setTimeout(() => {
