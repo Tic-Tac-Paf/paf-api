@@ -274,6 +274,11 @@ wss.on("connection", (ws) => {
             return;
           }
 
+          if (room.words[`round_${room.currentRound}`][data.playerId]) {
+            ws.send(JSON.stringify({ type: "wordAlreadySent" }));
+            return;
+          }
+
           let currentRound = room.currentRound || 1;
 
           if (!room.words[`round_${currentRound}`]) {
