@@ -511,7 +511,7 @@ wss.on("connection", (ws) => {
           //   return;
           // }
 
-          if (room.words[`round_${currentRound}`][playerId].validated) {
+          if (room.words?.[`round_${currentRound}`]?.[playerId]?.validated) {
             ws.send(JSON.stringify({ type: "wordAlreadyValidated" }));
             return;
           }
