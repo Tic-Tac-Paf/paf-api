@@ -507,10 +507,10 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          if (!room.words[`round_${currentRound}`][playerId]) {
-            ws.send(JSON.stringify({ type: "noWord" }));
-            return;
-          }
+          // if (!room.words[`round_${currentRound}`][playerId]) {
+          //   ws.send(JSON.stringify({ type: "noWord" }));
+          //   return;
+          // }
 
           if (room.words[`round_${currentRound}`][playerId].validated) {
             ws.send(JSON.stringify({ type: "wordAlreadyValidated" }));
